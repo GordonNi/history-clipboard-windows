@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report / 安全漏洞
+    url: https://github.com/GordonNi/history-clipboard-windows/security/advisories/new
+    about: Report vulnerabilities privately; never publish real clipboard data. / 请私密报告漏洞，不要公开真实剪贴板数据。
+  - name: Questions and support / 使用与支持
+    url: https://github.com/GordonNi/history-clipboard-windows/discussions
+    about: Ask usage and troubleshooting questions. / 提交使用和故障排查问题。
+  - name: macOS edition / macOS 版本
+    url: https://github.com/GordonNi/history-clipboard
+    about: Visit the separate macOS repository. / 访问独立的 macOS 仓库。

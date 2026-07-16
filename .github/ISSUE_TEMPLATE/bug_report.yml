@@ -1,0 +1,74 @@
+name: Bug report / 缺陷报告
+description: Report a reproducible Windows problem. / 报告可复现的 Windows 问题。
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Use synthetic clipboard content.
+        Never attach a real database, settings file, cached image directory,
+        credentials, or a screenshot containing private information.
+
+        感谢报告问题。请使用合成剪贴板内容。不要上传真实数据库、设置文件、
+        缓存图片目录、凭据或含私人信息的截图。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks / 提交前检查
+      options:
+        - label: I searched existing issues. / 我已搜索已有 Issue。
+          required: true
+        - label: This is not a security vulnerability. / 这不是安全漏洞。
+          required: true
+        - label: I removed private clipboard content and personal data. / 我已删除私人剪贴板内容和个人数据。
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / 版本
+      description: Example / 例如：0.1.0-preview.2+unsigned
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package / 安装方式
+      options:
+        - Per-user installer / 当前用户安装器
+        - Portable ZIP / 便携 ZIP
+        - Source build / 源码构建
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / Windows 版本
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps / 复现步骤
+      description: Use synthetic content and list the smallest reliable sequence. / 使用合成内容并给出最小可靠步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Sanitized context / 脱敏补充信息
+      description: Mention monitor scaling, package type, or stable HC-START code if relevant. Do not paste exception content containing private paths or data. / 可说明缩放、包类型或 HC-START 编号；不要粘贴含私人路径或数据的异常内容。

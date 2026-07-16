@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore HistoryClipboard.slnx
+
+      - name: Verify formatting
+        shell: pwsh
+        run: dotnet format HistoryClipboard.slnx --verify-no-changes --no-restore
+
+      - name: Build Release
+        shell: pwsh
+        run: dotnet build HistoryClipboard.slnx --configuration Release --no-restore
+
+      - name: Run automated tests
+        shell: pwsh
+        run: dotnet test HistoryClipboard.slnx --configuration Release --no-build
+
+      - name: Audit direct and transitive NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $report = dotnet list HistoryClipboard.slnx package --vulnerable --include-transitive --format json
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet vulnerability audit failed."
+          }
+          $text = $report -join [Environment]::NewLine
+          if ($text -match '"severity"\s*:') {
+            $text | Write-Output
+            throw "A vulnerable NuGet package was reported."
+          }
+          "NUGET_VULNERABILITIES=none"
+
+      - name: Parse PowerShell scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $errors = [System.Collections.Generic.List[string]]::new()
+          Get-ChildItem scripts -Filter *.ps1 -File | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$parseErrors)
+            foreach ($parseError in $parseErrors) {
+              $errors.Add("$($_.Name): $($parseError.Message)")
+            }
+          }
+          if ($errors.Count -ne 0) {
+            throw ($errors -join [Environment]::NewLine)
+          }
+
+      - name: Verify portable .NET resolution
+        shell: powershell
+        run: ./scripts/verify-dotnet-resolution.ps1
+
+      - name: Verify release version defaults
+        shell: powershell
+        run: ./scripts/verify-release-version.ps1 -Version 0.1.0-preview.2

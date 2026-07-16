@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HistoryClipboard.App/HistoryClipboard.App.csproj" />
+    <Project Path="src/HistoryClipboard.Core/HistoryClipboard.Core.csproj" />
+    <Project Path="src/HistoryClipboard.Infrastructure/HistoryClipboard.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HistoryClipboard.Tests/HistoryClipboard.Tests.csproj" />
+  </Folder>
+</Solution>

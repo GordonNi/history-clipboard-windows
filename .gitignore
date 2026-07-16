@@ -1,0 +1,33 @@
+# Local agent state and internal development records
+/AGENTS.md
+/dev-logs/
+/.agents/
+/.codex/
+
+# IDE, build, test, and release output
+.vs/
+.idea/
+**/bin/
+**/obj/
+TestResults/
+/artifacts/
+/dist/
+
+# Project-private tool downloads and extracted binaries. Keep the audited lock
+# and usage documentation public.
+/tools/.cache/
+/tools/inno-setup/
+!/tools/inno-setup.lock.json
+!/tools/README.md
+
+# Local HistoryClipboard data must never enter the source repository.
+history.db
+history.db-*
+settings.json
+/Images/
+*.log
+
+*.user
+*.suo
+*.nupkg
+*.snupkg

@@ -1,0 +1,15 @@
+{
+  "version": "7.0.2",
+  "architecture": "x64",
+  "installerFileName": "innosetup-7.0.2-x64.exe",
+  "installerUrl": "https://github.com/jrsoftware/issrc/releases/download/is-7_0_2/innosetup-7.0.2-x64.exe",
+  "installerSize": 17020192,
+  "installerSha256": "5ad54ca3def786f8f4212552e54cc6d8d61329e2d24a1cfee0571d42c2684ff1",
+  "signatureFileUrl": "https://files.jrsoftware.org/is/7/innosetup-7.0.2-x64.exe.issig",
+  "signatureFileSha256": "b85f4a9c527ee573d308840e859ff3ca99c8a750acb259d51f111301c7ef71bd",
+  "authenticodePublisher": "Pyrsys B.V.",
+  "releaseUrl": "https://github.com/jrsoftware/issrc/releases/tag/is-7_0_2",
+  "downloadPageUrl": "https://jrsoftware.org/isdl.php",
+  "verificationUrl": "https://jrsoftware.org/isdl-verify.php",
+  "portableModeDocumentationUrl": "https://jrsoftware.org/ishelp/topic_technotes.htm"
+}

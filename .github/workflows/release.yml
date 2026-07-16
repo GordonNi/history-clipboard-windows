@@ -1,0 +1,221 @@
+name: Preview release
+
+on:
+  push:
+    tags:
+      - "v*-preview.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Preview version without the v prefix (for build-only validation)
+        required: true
+        type: string
+        default: 0.1.0-preview.2
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build preview artifacts
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET from global.json
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Resolve and validate release version
+        id: version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:EVENT_NAME -eq "push") {
+            if ($env:REF_NAME -notmatch '^v(?<version>\d+\.\d+\.\d+-preview\.\d+)$') {
+              throw "Release tag must match v0.1.0-preview.2 style syntax."
+            }
+            $version = $Matches.version
+            $tag = $env:REF_NAME
+          }
+          else {
+            if ($env:REQUESTED_VERSION -notmatch '^\d+\.\d+\.\d+-preview\.\d+$') {
+              throw "Manual version must match 0.1.0-preview.2 style syntax."
+            }
+            $version = $env:REQUESTED_VERSION
+            $tag = ""
+          }
+
+          ./scripts/verify-release-version.ps1 -Version $version -Tag $tag
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore HistoryClipboard.slnx
+
+      - name: Verify formatting
+        shell: pwsh
+        run: dotnet format HistoryClipboard.slnx --verify-no-changes --no-restore
+
+      - name: Build Release
+        shell: pwsh
+        run: dotnet build HistoryClipboard.slnx --configuration Release --no-restore
+
+      - name: Run automated tests
+        shell: pwsh
+        run: dotnet test HistoryClipboard.slnx --configuration Release --no-build
+
+      - name: Audit NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          $report = dotnet list HistoryClipboard.slnx package --vulnerable --include-transitive --format json
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet vulnerability audit failed."
+          }
+          $text = $report -join [Environment]::NewLine
+          if ($text -match '"severity"\s*:') {
+            $text | Write-Output
+            throw "A vulnerable NuGet package was reported."
+          }
+
+      - name: Build portable package
+        shell: pwsh
+        run: ./scripts/build-portable-release.ps1 -Version '${{ steps.version.outputs.version }}'
+
+      - name: Verify portable package without GUI startup
+        shell: pwsh
+        run: ./scripts/verify-portable-package.ps1 -Version '${{ steps.version.outputs.version }}' -SkipStartupProbe
+
+      - name: Bootstrap locked Inno Setup
+        shell: pwsh
+        run: ./scripts/bootstrap-inno-setup.ps1
+
+      - name: Verify installer definition
+        shell: pwsh
+        run: |
+          ./scripts/verify-installer-definition.ps1 `
+            -Version '${{ steps.version.outputs.version }}' `
+            -IsccPath (Resolve-Path tools/inno-setup/7.0.2-x64/ISCC.exe)
+
+      - name: Build per-user setup
+        shell: pwsh
+        run: |
+          ./scripts/build-installer-release.ps1 `
+            -Version '${{ steps.version.outputs.version }}' `
+            -IsccPath (Resolve-Path tools/inno-setup/7.0.2-x64/ISCC.exe)
+
+      - name: Reverify uploaded portable package headlessly
+        shell: pwsh
+        run: ./scripts/verify-portable-package.ps1 -Version '${{ steps.version.outputs.version }}' -SkipStartupProbe
+
+      - name: Run clean-runner file-only installer probe
+        shell: pwsh
+        run: ./scripts/verify-installer-artifact.ps1 -Version '${{ steps.version.outputs.version }}'
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: portable-zip
+          path: artifacts/HistoryClipboard-${{ steps.version.outputs.version }}-unsigned-win-x64-portable.zip
+          if-no-files-found: error
+
+      - name: Upload portable checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: portable-sha256
+          path: artifacts/HistoryClipboard-${{ steps.version.outputs.version }}-unsigned-win-x64-portable.zip.sha256
+          if-no-files-found: error
+
+      - name: Upload setup
+        uses: actions/upload-artifact@v7
+        with:
+          name: setup-exe
+          path: artifacts/HistoryClipboard-${{ steps.version.outputs.version }}-unsigned-win-x64-setup.exe
+          if-no-files-found: error
+
+      - name: Upload setup checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: setup-sha256
+          path: artifacts/HistoryClipboard-${{ steps.version.outputs.version }}-unsigned-win-x64-setup.exe.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub prerelease
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v7
+
+      - name: Download this run's artifacts with GitHub CLI
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download $env:GITHUB_RUN_ID `
+            --repo $env:GITHUB_REPOSITORY `
+            --dir release-assets
+
+      - name: Create prerelease with four assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v(?<version>\d+\.\d+\.\d+-preview\.\d+)$') {
+            throw "Release tag is invalid."
+          }
+          $version = $Matches.version
+          $expectedNames = @(
+            "HistoryClipboard-$version-unsigned-win-x64-portable.zip",
+            "HistoryClipboard-$version-unsigned-win-x64-portable.zip.sha256",
+            "HistoryClipboard-$version-unsigned-win-x64-setup.exe",
+            "HistoryClipboard-$version-unsigned-win-x64-setup.exe.sha256"
+          )
+          $assets = @(
+            Get-ChildItem release-assets -Recurse -File |
+              Where-Object { $_.Name -in $expectedNames })
+          if ($assets.Count -ne 4 -or
+              @($assets.Name | Sort-Object) -join "`n" -ne
+              @($expectedNames | Sort-Object) -join "`n") {
+            throw "Expected exactly four version-matched release assets."
+          }
+
+          $notes = "docs/release-notes/v$version.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Release notes are missing: $notes"
+          }
+
+          $assetPaths = @($assets.FullName)
+          $arguments = @(
+            "release",
+            "create",
+            $env:GITHUB_REF_NAME
+          ) + $assetPaths + @(
+            "--repo",
+            $env:GITHUB_REPOSITORY,
+            "--title",
+            "HistoryClipboard Windows $version - Unsigned Preview",
+            "--notes-file",
+            $notes,
+            "--prerelease",
+            "--verify-tag"
+          )
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub prerelease creation failed."
+          }
