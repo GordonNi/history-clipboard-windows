@@ -33,6 +33,18 @@ if ($informationalVersion -ne "$Version+unsigned") {
         "$Version+unsigned.")
 }
 
+$portableBuildPath = Join-Path $PSScriptRoot "build-portable-release.ps1"
+$portableBuildText = Get-Content -LiteralPath $portableBuildPath -Raw
+$sourceRevisionMatch = [regex]::Match(
+    $portableBuildText,
+    '(?im)^\s*-p:IncludeSourceRevisionInInformationalVersion=(?<value>[^\s`]+)\s*`?\s*$')
+if (-not $sourceRevisionMatch.Success -or
+    $sourceRevisionMatch.Groups["value"].Value -ne "false") {
+    throw (
+        "Portable publishing must set " +
+        "IncludeSourceRevisionInInformationalVersion=false.")
+}
+
 $versionedScripts = @(
     "build-portable-release.ps1",
     "verify-portable-package.ps1",
@@ -78,6 +90,7 @@ if (-not (Test-Path -LiteralPath $releaseNotesPath -PathType Leaf)) {
 
 Write-Output "RELEASE_VERSION=$Version"
 Write-Output "INFORMATIONAL_VERSION=$Version+unsigned"
+Write-Output "SOURCE_REVISION_INFORMATIONAL_VERSION=disabled"
 Write-Output "TAG_VERSION=valid"
 Write-Output "SCRIPT_DEFAULTS=valid"
 Write-Output "RELEASE_NOTES=present"

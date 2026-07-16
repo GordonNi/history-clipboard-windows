@@ -61,6 +61,7 @@ foreach ($path in @($publishDirectory, $zipPath, $checksumPath)) {
     -p:DebugType=None `
     -p:PublishSingleFile=false `
     -p:PublishTrimmed=false `
+    -p:IncludeSourceRevisionInInformationalVersion=false `
     -p:ContinuousIntegrationBuild=true
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
