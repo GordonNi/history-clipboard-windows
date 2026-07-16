@@ -4,6 +4,30 @@ Set-StrictMode -Version Latest
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $candidates = New-Object System.Collections.Generic.List[string]
 
+function Test-DotnetSupportsProject {
+    param([string]$DotnetPath)
+
+    $versionOutput = @()
+    $exitCode = -1
+    Push-Location $projectRoot
+    try {
+        $versionOutput = @(& $DotnetPath --version 2>$null)
+        $exitCode = $LASTEXITCODE
+    }
+    catch {
+        return $false
+    }
+    finally {
+        Pop-Location
+    }
+
+    return (
+        $exitCode -eq 0 -and
+        @($versionOutput | Where-Object {
+                -not [string]::IsNullOrWhiteSpace([string]$_)
+            }).Count -ne 0)
+}
+
 if (-not [string]::IsNullOrWhiteSpace($env:DOTNET_HOST_PATH)) {
     $candidates.Add($env:DOTNET_HOST_PATH)
 }
@@ -46,13 +70,13 @@ foreach ($candidate in $candidates) {
         continue
     }
 
-    $sdkList = @(& $fullPath --list-sdks 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $sdkList.Count -ne 0) {
+    if (Test-DotnetSupportsProject -DotnetPath $fullPath) {
         Write-Output $fullPath
         exit 0
     }
 }
 
 throw (
-    "A dotnet.exe with an installed SDK was not found. Set DOTNET_HOST_PATH or DOTNET_ROOT, " +
-    "add dotnet to PATH, or install the SDK in .dotnet under the project or user profile.")
+    "A dotnet.exe that satisfies the repository global.json was not found. " +
+    "Set DOTNET_HOST_PATH or DOTNET_ROOT, add a compatible dotnet to PATH, " +
+    "or install the required SDK in .dotnet under the project or user profile.")
