@@ -186,13 +186,24 @@ jobs:
             "HistoryClipboard-$version-unsigned-win-x64-setup.exe",
             "HistoryClipboard-$version-unsigned-win-x64-setup.exe.sha256"
           )
-          $assets = @(
-            Get-ChildItem release-assets -Recurse -File |
-              Where-Object { $_.Name -in $expectedNames })
-          if ($assets.Count -ne 4 -or
-              @($assets.Name | Sort-Object) -join "`n" -ne
-              @($expectedNames | Sort-Object) -join "`n") {
-            throw "Expected exactly four version-matched release assets."
+          $assets = @(Get-ChildItem release-assets -Recurse -File)
+          $actualNames = @($assets | ForEach-Object { $_.Name } | Sort-Object)
+          $sortedExpectedNames = @($expectedNames | Sort-Object)
+          $nameDifferences = @(
+            Compare-Object `
+              -ReferenceObject $sortedExpectedNames `
+              -DifferenceObject $actualNames `
+              -CaseSensitive)
+          if ($assets.Count -ne 4 -or $nameDifferences.Count -ne 0) {
+            $actualDescription = if ($actualNames.Count -eq 0) {
+              "<none>"
+            }
+            else {
+              $actualNames -join ", "
+            }
+            throw (
+              "Expected exactly four version-matched release assets. " +
+              "Actual ($($actualNames.Count)): $actualDescription")
           }
 
           $notes = "docs/release-notes/v$version.md"
